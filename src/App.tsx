@@ -12,6 +12,7 @@ import { Clients } from './pages/Clients'
 import { Projets } from './pages/Projets'
 import { Finance } from './pages/Finance'
 import { Catalogue } from './pages/Catalogue'
+import { Audit } from './pages/Audit'
 
 type Acces = { email: string; nom: string | null; role: string }
 
@@ -77,6 +78,7 @@ function Shell({ acces }: { acces: Acces }) {
     case '/projets': page = <Projets params={params} />; break
     case '/finance': page = <Finance params={params} />; break
     case '/catalogue': page = <Catalogue />; break
+    case '/audit': page = <Audit params={params} />; break
     default: page = <Accueil />
   }
 
@@ -89,7 +91,7 @@ function Shell({ acces }: { acces: Acces }) {
         </div>
         <nav className="nav">
           {NAV.map((n) => (
-            <a key={n.path} href={'#' + n.path} className={racine === n.path ? 'active' : ''}>
+            <a key={n.path} href={'#' + n.path} className={racine === n.path || (racine === '/audit' && n.path === '/pipeline') ? 'active' : ''}>
               {n.icon}{n.label}
               {n.badge === 'leads' && nouveaux > 0 && <span className="count">{nouveaux}</span>}
             </a>

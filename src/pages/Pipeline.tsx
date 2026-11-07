@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { db, q } from '../lib/supabase'
-import { date, since } from '../lib/format'
+import { date, money, since } from '../lib/format'
 import { fermer, go } from '../lib/route'
 import {
   LANGUES, LEAD_STATUTS, LEAD_STATUT_LIBELLE, LEAD_STATUT_TON, PERIODES_APPEL, PHASES_RELANCE, SOURCES, TENTATIVES,
@@ -15,6 +15,8 @@ export type Lead = {
   creneau_reserve: string | null; message_prospect: string | null; business_overview: string | null; reponses_audit: string | null
   d1_activite: string | null; d2_parcours: string | null; d3_taches: string | null; d4_outils: string | null; d5_corvee: string | null
   synthese_ia: string | null; accuse_envoye_le: string | null; fiche_maitre_id: string | null; client_id: string | null; created_at: string
+  audit_score: number | null; audit_le: string | null
+  audit_proposition: { lignes: { nom: string; palier: string; prix: number }[]; total: number; heures_mois: number | null } | null
 }
 
 // Les colonnes visibles du pipeline. Disqualifiés et désistés restent accessibles via le filtre.
@@ -133,7 +135,7 @@ function LeadPanel({ id, leads, onClose, onSaved }: { id: string; leads: Lead[];
   }
 
   const diagnostic = [
-    ['Activité et équipe', f.d1_activite], ['Parcours client', f.d2_parcours], ['Tâches répétitives', f.d3_taches],
+    ['Son entreprise ou son projet', f.d1_activite], ['Parcours client', f.d2_parcours], ['Tâches répétitives', f.d3_taches],
     ['Outils en place', f.d4_outils], ['Corvée à supprimer', f.d5_corvee],
   ].filter(([, v]) => v)
 
@@ -143,6 +145,7 @@ function LeadPanel({ id, leads, onClose, onSaved }: { id: string; leads: Lead[];
       subtitle={<>Lead n°{f.numero} · reçu le {date(f.created_at, true)} · <Pill ton={LEAD_STATUT_TON[initial.status]}>{LEAD_STATUT_LIBELLE[initial.status]}</Pill></>}
       onClose={onClose}
       footer={<>
+        {!f.fiche_maitre_id && <button className="btn" onClick={() => go('/audit', { lead: id })}>{f.audit_le ? 'Fiche d’audit' : 'Démarrer l’audit'}</button>}
         {initial.status !== 'Won' && !f.fiche_maitre_id && <button className="btn" disabled={busy} onClick={() => enregistrer({ status: 'Won' })}>Marquer gagné</button>}
         <button className="btn primary" disabled={busy} onClick={() => enregistrer()}>{busy ? 'Enregistrement…' : 'Enregistrer'}</button>
       </>}
@@ -192,9 +195,20 @@ function LeadPanel({ id, leads, onClose, onSaved }: { id: string; leads: Lead[];
         <section><h3 className="section-title">Message du prospect</h3><div className="prose">{f.message_prospect}</div></section>
       )}
 
+      {f.audit_le && f.audit_proposition && (
+        <section>
+          <h3 className="section-title">Audit · {date(f.audit_le, true)}</h3>
+          <div className="totals card card-pad">
+            <div><span>Maturité opérationnelle</span><span className="strong">{f.audit_score ?? '—'} / 100</span></div>
+            {f.audit_proposition.lignes.map((l) => <div key={l.nom}><span>{l.nom} · {l.palier}</span><span>{money(l.prix)}</span></div>)}
+            <div className="grand"><span>Prix calculé</span><span>{money(f.audit_proposition.total)}</span></div>
+          </div>
+        </section>
+      )}
+
       {diagnostic.length > 0 && (
         <section>
-          <h3 className="section-title">Diagnostic Éclair</h3>
+          <h3 className="section-title">Ce que le prospect a écrit</h3>
           <div className="qa">{diagnostic.map(([q, a]) => <div key={q}><div className="q">{q}</div><div className="a">{a}</div></div>)}</div>
         </section>
       )}

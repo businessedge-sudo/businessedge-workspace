@@ -85,10 +85,10 @@ function ProjetPanel({ id, clientCode, onClose, onSaved }: { id: string; clientC
     const [p, services, choisis, taches] = await Promise.all([
       q<Projet>(db.from('v_projects').select('*').eq('id', id).single()),
       q<Service[]>(db.from('services').select('id, nom, nom_commercial_fr, categorie, actif, master_template, prix_standard, prix_medium, prix_premium, perimetre_standard, perimetre_medium, perimetre_premium').neq('categorie', 'abonnement').order('ordre')),
-      q<{ service_id: string }[]>(db.from('project_services').select('service_id').eq('project_id', id)),
+      q<{ service_id: string; palier: string | null }[]>(db.from('project_services').select('service_id, palier').eq('project_id', id)),
       q<Tache[]>(db.from('tasks').select('id, nom, statut, terminee, phase, ordre, echeance, service_id').eq('project_id', id).order('phase').order('ordre')),
     ])
-    return { p, services, choisis: new Set(choisis.map((c) => c.service_id)), taches }
+    return { p, services, choisis: new Set(choisis.map((c) => c.service_id)), paliers: new Map(choisis.map((c) => [c.service_id, c.palier])), taches }
   }, [id])
   const [f, setF] = useState<Projet | null>(null)
   const [busy, setBusy] = useState(false)
@@ -98,7 +98,7 @@ function ProjetPanel({ id, clientCode, onClose, onSaved }: { id: string; clientC
     palier === 'Premium' ? s.prix_premium : palier === 'Medium' ? s.prix_medium : s.prix_standard
   const apercu = useMemo(() => {
     if (!data || !f) return { catalogue: 0, du: 0 }
-    const catalogue = data.services.filter((s) => data.choisis.has(s.id)).reduce((t, s) => t + Number(prixService(s, f.proposal_type)), 0)
+    const catalogue = data.services.filter((s) => data.choisis.has(s.id)).reduce((t, s) => t + Number(prixService(s, data.paliers.get(s.id) ?? f.proposal_type)), 0)
     const remise = Math.min(Math.max(Number(f.remise_pct ?? 0), 0), 100)
     return { catalogue: f.proposal_type ? catalogue : 0, du: f.proposal_type ? Math.round(catalogue * (1 - remise / 100) * 100) / 100 : 0 }
   }, [data, f])
@@ -111,6 +111,12 @@ function ProjetPanel({ id, clientCode, onClose, onSaved }: { id: string; clientC
       ? db.from('project_services').delete().eq('project_id', id).eq('service_id', sid)
       : db.from('project_services').insert({ project_id: id, service_id: sid })
     const { error } = await op
+    if (error) return toast(error.message, true)
+    reload(); onSaved()
+  }
+
+  const changerPalierLigne = async (sid: string, palier: string | null) => {
+    const { error } = await db.from('project_services').update({ palier }).eq('project_id', id).eq('service_id', sid)
     if (error) return toast(error.message, true)
     reload(); onSaved()
   }
@@ -184,7 +190,8 @@ function ProjetPanel({ id, clientCode, onClose, onSaved }: { id: string; clientC
               <div className="grid" style={{ gap: 6 }}>
                 {items.map((s) => {
                   const on = data.choisis.has(s.id)
-                  const per = f.proposal_type === 'Premium' ? s.perimetre_premium : f.proposal_type === 'Medium' ? s.perimetre_medium : s.perimetre_standard
+                  const pl = data.paliers.get(s.id) ?? f.proposal_type
+                  const per = pl === 'Premium' ? s.perimetre_premium : pl === 'Medium' ? s.perimetre_medium : s.perimetre_standard
                   return (
                     <div key={s.id} className={`service-row has-per ${on ? 'on' : ''}`} onClick={() => !p.signed && basculerService(s.id)}
                       title={p.signed ? 'Projet signé : les services sont figés' : 'Cliquer pour ajouter ou retirer'}>
@@ -192,7 +199,16 @@ function ProjetPanel({ id, clientCode, onClose, onSaved }: { id: string; clientC
                         <div style={{ color: 'var(--ink)', fontWeight: 500 }}>{s.nom_commercial_fr ?? s.nom}</div>
                         <div className="muted" style={{ fontSize: 12 }}>{s.nom}{!s.master_template && ' · construit à la demande'}</div>
                       </div>
-                      <span className="price">{money(prixService(s, f.proposal_type ?? 'Standard'))}</span>
+                      <span className="price">
+                        {on && !p.signed && (
+                          <select className="input palier-ligne" value={data.paliers.get(s.id) ?? ''} onClick={(e) => e.stopPropagation()} onChange={(e) => changerPalierLigne(s.id, e.target.value || null)}>
+                            <option value="">Palier du projet</option>
+                            {PALIERS.map((x) => <option key={x}>{x}</option>)}
+                          </select>
+                        )}
+                        {on && p.signed && data.paliers.get(s.id) && <span className="muted" style={{ marginRight: 8 }}>{data.paliers.get(s.id)}</span>}
+                        {money(prixService(s, pl ?? 'Standard'))}
+                      </span>
                       {on && per && <div className="per">{per}</div>}
                     </div>
                   )
