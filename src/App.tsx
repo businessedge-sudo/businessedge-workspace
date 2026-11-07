@@ -3,7 +3,8 @@ import type { Session } from '@supabase/supabase-js'
 import { db } from './lib/supabase'
 import { useRoute } from './lib/route'
 import { Loading } from './components/ui'
-import { ICatalogue, IClients, IFinance, IHome, IMenu, IPipeline, IProjets } from './components/icons'
+import { ICatalogue, IClients, IFinance, IHome, IMenu, IMoon, IPipeline, IProjets, ISun } from './components/icons'
+import { useTheme } from './lib/theme'
 import { Login } from './pages/Login'
 import { Accueil } from './pages/Accueil'
 import { Pipeline } from './pages/Pipeline'
@@ -61,6 +62,7 @@ function Shell({ acces }: { acces: Acces }) {
   const [ouvert, setOuvert] = useState(false)
   const [nouveaux, setNouveaux] = useState<number>(0)
   const racine = '/' + (path.split('/')[1] ?? '')
+  const { theme, setTheme } = useTheme()
 
   useEffect(() => { setOuvert(false) }, [path])
   useEffect(() => {
@@ -93,6 +95,10 @@ function Shell({ acces }: { acces: Acces }) {
             </a>
           ))}
         </nav>
+        <div className="theme-toggle" role="group" aria-label="Thème">
+          <button className={theme === 'dark' ? 'on' : ''} aria-pressed={theme === 'dark'} onClick={() => setTheme('dark')}><IMoon /> Sombre</button>
+          <button className={theme === 'light' ? 'on' : ''} aria-pressed={theme === 'light'} onClick={() => setTheme('light')}><ISun /> Clair</button>
+        </div>
         <div className="sidebar-foot">
           <strong>{acces.nom ?? acces.email}</strong>
           {acces.email}

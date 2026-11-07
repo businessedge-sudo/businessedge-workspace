@@ -173,7 +173,7 @@ function ProjetPanel({ id, clientCode, onClose, onSaved }: { id: string; clientC
           {data.services.map((s) => (
             <div key={s.id} className={`service-row ${data.choisis.has(s.id) ? 'on' : ''}`} onClick={() => !p.signed && basculerService(s.id)}
               title={p.signed ? 'Projet signé : les services sont figés' : 'Cliquer pour ajouter ou retirer'}>
-              <div><div style={{ color: '#fff', fontWeight: 500 }}>{s.nom_commercial_fr ?? s.nom}</div><div className="muted" style={{ fontSize: 12 }}>{s.nom}</div></div>
+              <div><div style={{ color: 'var(--ink)', fontWeight: 500 }}>{s.nom_commercial_fr ?? s.nom}</div><div className="muted" style={{ fontSize: 12 }}>{s.nom}</div></div>
               <span className="price">{money(prixService(s, f.proposal_type ?? 'Standard'))}</span>
             </div>
           ))}
@@ -217,7 +217,7 @@ function ProjetPanel({ id, clientCode, onClose, onSaved }: { id: string; clientC
           <div>
             {data.taches.map((t) => (
               <div key={t.id} className={`task ${t.terminee ? 'done' : ''}`}>
-                <input type="checkbox" checked={t.terminee} onChange={(e) => majTache(t, { terminee: e.target.checked })} style={{ accentColor: '#F0B90B', width: 16, height: 16 }} />
+                <input type="checkbox" checked={t.terminee} onChange={(e) => majTache(t, { terminee: e.target.checked })} style={{ accentColor: 'var(--brand-500)', width: 16, height: 16 }} />
                 <div><div className="n">{t.nom}</div><div className="ph">{t.phase}</div></div>
                 <select className="input" style={{ height: 30, width: 120, fontSize: 12.5 }} value={t.statut} onChange={(e) => majTache(t, { statut: e.target.value })}>
                   {TACHE_STATUTS.map((s) => <option key={s}>{s}</option>)}

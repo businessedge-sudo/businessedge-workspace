@@ -4,6 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#0B0E11" />
+    <script>
+      // Applique le thème choisi avant l'affichage, pour éviter un flash.
+      try { if (localStorage.getItem('be-theme') === 'light') document.documentElement.dataset.theme = 'light' } catch (e) {}
+    </script>
     <meta name="robots" content="noindex, nofollow" />
     <title>Business Edge · Workspace</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />

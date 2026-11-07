@@ -9,3 +9,5 @@ export const ICatalogue = () => <svg {...s}><path d="M4 5.5A1.5 1.5 0 015.5 4H11
 export const IPlus = () => <svg {...s}><path d="M12 5v14M5 12h14" /></svg>
 export const IMenu = () => <svg {...s}><path d="M4 7h16M4 12h16M4 17h16" /></svg>
 export const IExt = () => <svg {...s}><path d="M14 4h6v6" /><path d="M20 4l-9 9" /><path d="M18 14v5a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h5" /></svg>
+export const IMoon = () => <svg {...s}><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z" /></svg>
+export const ISun = () => <svg {...s}><circle cx="12" cy="12" r="4" /><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4L6 18M18 6l1.4-1.4" /></svg>
