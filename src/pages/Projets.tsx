@@ -3,7 +3,7 @@ import { db, q } from '../lib/supabase'
 import { date, money, toInputDate } from '../lib/format'
 import { fermer, go } from '../lib/route'
 import {
-  DELIVERY, DELIVERY_LIBELLE, MOTIFS_REMISE, PALIERS, PROPOSAL_LIBELLE, PROPOSAL_STATUS, TACHE_STATUTS, TACHE_TON,
+  CATEGORIE_LIBELLE, DELIVERY, DELIVERY_LIBELLE, MOTIFS_REMISE, PALIERS, PLATEFORMES, PROPOSAL_LIBELLE, PROPOSAL_STATUS, TACHE_STATUTS, TACHE_TON,
 } from '../lib/referentiel'
 import { Bar, Empty, Field, Loading, Panel, Pill, Select, useData, useToast } from '../components/ui'
 
@@ -11,10 +11,14 @@ type Projet = {
   id: string; project_code: string; client_id: string | null; lead_id: string | null; delivery_status: string | null
   proposal_status: string | null; proposal_type: string | null; signed: boolean; done: boolean; remise_pct: number | null
   motif_remise: string | null; launch_date: string | null; estimated_delivery_date: string | null; next_milestone: string | null
-  deliverables_url: string | null; contrat_signe_url: string | null; prix_catalogue: number; montant_du: number; montant_remise: number
+  deliverables_url: string | null; contrat_signe_url: string | null; plateforme: string | null; prix_catalogue: number; montant_du: number; montant_remise: number
   nb_taches: number; nb_taches_faites: number; avancement_pct: number; lignes_fr: string | null; created_at: string
 }
-type Service = { id: string; nom: string; nom_commercial_fr: string | null; prix_standard: number; prix_medium: number; prix_premium: number }
+type Service = {
+  id: string; nom: string; nom_commercial_fr: string | null; categorie: string; actif: boolean; master_template: boolean
+  prix_standard: number; prix_medium: number; prix_premium: number
+  perimetre_standard: string | null; perimetre_medium: string | null; perimetre_premium: string | null
+}
 type Tache = { id: string; nom: string; statut: string; terminee: boolean; phase: string | null; ordre: number | null; echeance: string | null; service_id: string | null }
 
 export function Projets({ params }: { params: URLSearchParams }) {
@@ -80,7 +84,7 @@ function ProjetPanel({ id, clientCode, onClose, onSaved }: { id: string; clientC
   const { data, reload } = useData(async () => {
     const [p, services, choisis, taches] = await Promise.all([
       q<Projet>(db.from('v_projects').select('*').eq('id', id).single()),
-      q<Service[]>(db.from('services').select('id, nom, nom_commercial_fr, prix_standard, prix_medium, prix_premium').order('nom')),
+      q<Service[]>(db.from('services').select('id, nom, nom_commercial_fr, categorie, actif, master_template, prix_standard, prix_medium, prix_premium, perimetre_standard, perimetre_medium, perimetre_premium').neq('categorie', 'abonnement').order('ordre')),
       q<{ service_id: string }[]>(db.from('project_services').select('service_id').eq('project_id', id)),
       q<Tache[]>(db.from('tasks').select('id, nom, statut, terminee, phase, ordre, echeance, service_id').eq('project_id', id).order('phase').order('ordre')),
     ])
@@ -119,7 +123,7 @@ function ProjetPanel({ id, clientCode, onClose, onSaved }: { id: string; clientC
       proposal_type: f.proposal_type, proposal_status: f.proposal_status, delivery_status: f.delivery_status,
       remise_pct: f.remise_pct, motif_remise: remise > 0 ? f.motif_remise : null,
       launch_date: f.launch_date, estimated_delivery_date: f.estimated_delivery_date, next_milestone: f.next_milestone,
-      deliverables_url: f.deliverables_url, contrat_signe_url: f.contrat_signe_url, done: f.done, ...extra,
+      deliverables_url: f.deliverables_url, contrat_signe_url: f.contrat_signe_url, plateforme: f.plateforme, done: f.done, ...extra,
     }
     const { error } = await db.from('projects').update(maj).eq('id', id)
     setBusy(false)
@@ -131,6 +135,8 @@ function ProjetPanel({ id, clientCode, onClose, onSaved }: { id: string; clientC
   const signer = () => {
     if (!data.choisis.size) return toast('Choisissez au moins un service avant de signer.', true)
     if (!f.proposal_type) return toast('Choisissez un palier avant de signer.', true)
+    const vendus = data.services.filter((s) => data.choisis.has(s.id))
+    if (vendus.some((s) => s.categorie !== 'diagnostic') && !f.plateforme) return toast('Choisissez la plateforme (Supabase ou Airtable) avant de signer.', true)
     enregistrer({ signed: true, delivery_status: f.delivery_status ?? 'VERIFICATION', proposal_status: 'Sent' })
   }
 
@@ -169,14 +175,41 @@ function ProjetPanel({ id, clientCode, onClose, onSaved }: { id: string; clientC
         <div className="chips" style={{ marginBottom: 10 }}>
           {PALIERS.map((pl) => <button key={pl} className={`chip ${f.proposal_type === pl ? 'on' : ''}`} onClick={() => set('proposal_type', pl)}>{pl}</button>)}
         </div>
-        <div className="grid" style={{ gap: 6 }}>
-          {data.services.map((s) => (
-            <div key={s.id} className={`service-row ${data.choisis.has(s.id) ? 'on' : ''}`} onClick={() => !p.signed && basculerService(s.id)}
-              title={p.signed ? 'Projet signé : les services sont figés' : 'Cliquer pour ajouter ou retirer'}>
-              <div><div style={{ color: 'var(--ink)', fontWeight: 500 }}>{s.nom_commercial_fr ?? s.nom}</div><div className="muted" style={{ fontSize: 12 }}>{s.nom}</div></div>
-              <span className="price">{money(prixService(s, f.proposal_type ?? 'Standard'))}</span>
+        {(['diagnostic', 'systeme', 'module'] as const).map((cat) => {
+          const items = data.services.filter((s) => s.categorie === cat && (s.actif || data.choisis.has(s.id)))
+          if (!items.length) return null
+          return (
+            <div key={cat}>
+              <div className="service-group-title">{CATEGORIE_LIBELLE[cat]}</div>
+              <div className="grid" style={{ gap: 6 }}>
+                {items.map((s) => {
+                  const on = data.choisis.has(s.id)
+                  const per = f.proposal_type === 'Premium' ? s.perimetre_premium : f.proposal_type === 'Medium' ? s.perimetre_medium : s.perimetre_standard
+                  return (
+                    <div key={s.id} className={`service-row has-per ${on ? 'on' : ''}`} onClick={() => !p.signed && basculerService(s.id)}
+                      title={p.signed ? 'Projet signé : les services sont figés' : 'Cliquer pour ajouter ou retirer'}>
+                      <div>
+                        <div style={{ color: 'var(--ink)', fontWeight: 500 }}>{s.nom_commercial_fr ?? s.nom}</div>
+                        <div className="muted" style={{ fontSize: 12 }}>{s.nom}{!s.master_template && ' · construit à la demande'}</div>
+                      </div>
+                      <span className="price">{money(prixService(s, f.proposal_type ?? 'Standard'))}</span>
+                      {on && per && <div className="per">{per}</div>}
+                    </div>
+                  )
+                })}
+              </div>
             </div>
-          ))}
+          )
+        })}
+        {(() => {
+          const vendus = data.services.filter((s) => data.choisis.has(s.id))
+          const modules = vendus.some((s) => s.categorie === 'module')
+          const systeme = vendus.some((s) => s.categorie === 'systeme')
+          return modules && !systeme ? <div className="notice" style={{ marginTop: 10 }}>Des modules sans le système de pilotage : à réserver aux clients déjà équipés.</div> : null
+        })()}
+        <div className="service-group-title">Plateforme</div>
+        <div className="chips">
+          {PLATEFORMES.map((pl) => <button key={pl} className={`chip ${f.plateforme === pl ? 'on' : ''}`} onClick={() => set('plateforme', f.plateforme === pl ? null : pl)}>{pl}</button>)}
         </div>
       </section>
 

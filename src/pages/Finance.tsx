@@ -3,7 +3,7 @@ import { db, q } from '../lib/supabase'
 import { date, money, toInputDate } from '../lib/format'
 import { fermer, go } from '../lib/route'
 import {
-  ABO_LIBELLE, ABO_STATUTS, ABO_TON, CYCLE_LIBELLE, CYCLES, FACTURE_LIBELLE, FACTURE_STATUTS, FACTURE_TON, METHODES, PALIERS, PLAN_LIBELLE, PLANS,
+  ABO_LIBELLE, ABO_STATUTS, ABO_TON, CYCLE_LIBELLE, CYCLES, FACTURE_LIBELLE, FACTURE_STATUTS, FACTURE_TON, METHODES, PALIERS, PLAN_LIBELLE, PLAN_PRIX, PLANS,
 } from '../lib/referentiel'
 import { Empty, Field, Kpi, Loading, Panel, Pill, Select, useData, useToast } from '../components/ui'
 
@@ -325,6 +325,17 @@ function AboPanel({ abo, clientInitial, clients, onClose, onSaved }: {
     next_renewal_date: abo?.next_renewal_date ?? null,
   }))
   const set = <K extends keyof AboForm>(k: K, v: AboForm[K]) => setF({ ...f, [k]: v })
+  // Les prix des formules viennent du catalogue (service « Abonnement »), prix mensuels.
+  const { data: tarif } = useData(async () => {
+    const r = await q<{ prix_standard: number; prix_medium: number; prix_premium: number }[]>(db.from('services').select('prix_standard, prix_medium, prix_premium').eq('categorie', 'abonnement').limit(1))
+    return r[0] ?? null
+  })
+  const prixFormule = (plan: string | null, cycle: string) => {
+    if (!tarif || !plan || !PLAN_PRIX[plan]) return null
+    const mois = cycle === 'Annual' ? 12 : cycle === 'Quarterly' ? 3 : 1
+    return Number(tarif[PLAN_PRIX[plan]]) * mois
+  }
+  const choisirFormule = (plan: string | null, cycle = f.billing_cycle) => setF({ ...f, plan_type: plan, billing_cycle: cycle, amount: prixFormule(plan, cycle) ?? f.amount })
 
   const enregistrer = async () => {
     if (!f.client_id || !f.plan_type) return toast('Client et formule sont requis.', true)
@@ -367,8 +378,8 @@ function AboPanel({ abo, clientInitial, clients, onClose, onSaved }: {
               {clients.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
             </select>
           </Field>
-          <Field label="Formule"><Select value={f.plan_type} options={PLANS} labels={PLAN_LIBELLE} onChange={(v) => set('plan_type', v)} /></Field>
-          <Field label="Cycle"><Select value={f.billing_cycle} options={CYCLES} labels={CYCLE_LIBELLE} allowEmpty={false} onChange={(v) => set('billing_cycle', v ?? 'Monthly')} /></Field>
+          <Field label="Formule"><Select value={f.plan_type} options={PLANS} labels={PLAN_LIBELLE} onChange={(v) => choisirFormule(v)} /></Field>
+          <Field label="Cycle"><Select value={f.billing_cycle} options={CYCLES} labels={CYCLE_LIBELLE} allowEmpty={false} onChange={(v) => choisirFormule(f.plan_type, v ?? 'Monthly')} /></Field>
           <Field label="Statut"><Select value={f.status} options={ABO_STATUTS} labels={ABO_LIBELLE} allowEmpty={false} onChange={(v) => set('status', v ?? 'Active')} /></Field>
           <Field label="Montant par cycle (USD)"><input className="input" type="number" min={0} step="0.01" value={f.amount ?? ''} onChange={(e) => set('amount', e.target.value === '' ? null : Number(e.target.value))} /></Field>
           <Field label="Début"><input className="input" type="date" value={toInputDate(f.start_date)} onChange={(e) => set('start_date', e.target.value || null)} /></Field>

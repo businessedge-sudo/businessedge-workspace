@@ -23,7 +23,7 @@ export const DELIVERY_LIBELLE: Record<string, string> = {
 export const PROPOSAL_STATUS = ['Not yet', 'Sent', 'Negotiation']
 export const PROPOSAL_LIBELLE: Record<string, string> = { 'Not yet': 'Pas encore', 'Sent': 'Envoyée', 'Negotiation': 'Négociation' }
 export const PALIERS = ['Standard', 'Medium', 'Premium'] as const
-export const MOTIFS_REMISE = ['Offre de lancement', 'Multi-services (2 et +)', 'Paiement comptant', 'Client existant', 'Commercial (à justifier)']
+export const MOTIFS_REMISE = ['Offre de lancement', 'Multi-services (2 et +)', 'Paiement comptant', 'Client existant', 'Diagnostic déduit', 'Commercial (à justifier)']
 
 export const TACHE_STATUTS = ['À faire', 'En cours', 'Bloqué', 'En revue', 'Fait']
 export const TACHE_TON: Record<string, Ton> = { 'À faire': 'mute', 'En cours': 'run', 'Bloqué': 'late', 'En revue': 'info', 'Fait': 'ok' }
@@ -42,8 +42,10 @@ export const FACTURE_LIBELLE: Record<string, string> = { 'Drafts': 'Brouillon', 
 export const FACTURE_TON: Record<string, Ton> = { 'Drafts': 'mute', 'Pending': 'run', 'Paid': 'ok', 'Overdue': 'late', 'Failed': 'late' }
 export const METHODES = ['Virement bancaire', 'Stripe', 'Mobile Money', 'Espèces', 'Chèque', 'Autre']
 
-export const PLANS = ['System Evolution', 'Technical Maintenance', 'Full Consulting Retainer']
-export const PLAN_LIBELLE: Record<string, string> = { 'System Evolution': 'Évolution du système', 'Technical Maintenance': 'Suivi technique', 'Full Consulting Retainer': 'Accompagnement complet' }
+export const PLANS = ['Essentiel', 'Croissance', 'Partenaire']
+export const PLAN_LIBELLE: Record<string, string> = { Essentiel: 'Essentiel', Croissance: 'Croissance', Partenaire: 'Partenaire' }
+/** Correspondance formule d'abonnement ↔ colonne de prix du service « Abonnement ». */
+export const PLAN_PRIX: Record<string, 'prix_standard' | 'prix_medium' | 'prix_premium'> = { Essentiel: 'prix_standard', Croissance: 'prix_medium', Partenaire: 'prix_premium' }
 export const CYCLES = ['Monthly', 'Quarterly', 'Annual']
 export const CYCLE_LIBELLE: Record<string, string> = { 'Monthly': 'Mensuel', 'Quarterly': 'Trimestriel', 'Annual': 'Annuel' }
 export const ABO_STATUTS = ['Active', 'Paused', 'Churned']
@@ -51,3 +53,13 @@ export const ABO_LIBELLE: Record<string, string> = { 'Active': 'Actif', 'Paused'
 export const ABO_TON: Record<string, Ton> = { 'Active': 'ok', 'Paused': 'mute', 'Churned': 'late' }
 
 export const PHASES = ['1 · Kickoff', '2 · Build', '3 · QA', '4 · Livraison', '5 · Formation', '6 · Clôture']
+
+export const CATEGORIES = ['diagnostic', 'systeme', 'module', 'abonnement'] as const
+export const CATEGORIE_LIBELLE: Record<string, string> = { diagnostic: 'Diagnostic', systeme: 'Produit principal', module: 'Modules', abonnement: 'Abonnement' }
+export const CATEGORIE_AIDE: Record<string, string> = {
+  diagnostic: 'Porte d’entrée payante, déduite du projet s’il est signé.',
+  systeme: 'Le système de pilotage : ce que l’on vend en premier.',
+  module: 'S’ajoutent au système. Jamais vendus seuls, sauf exception.',
+  abonnement: 'Prix mensuels, après livraison.',
+}
+export const PLATEFORMES = ['Supabase', 'Airtable']
